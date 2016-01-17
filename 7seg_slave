@@ -1,0 +1,125 @@
+#include "mbed.h"
+
+I2CSlave slave(dp5, dp27);
+volatile int i2c_address = 0xA0;
+volatile int n=0;
+
+DigitalOut segA(dp26);
+DigitalOut segB(dp17);
+DigitalOut segC(dp9);
+DigitalOut segD(dp11);
+DigitalOut segE(dp13);
+DigitalOut segF(dp25);
+DigitalOut segG(dp4);
+DigitalOut segDot(dp10);
+
+PwmOut com1(dp2);
+PwmOut com2(dp24);
+PwmOut com3(dp18);
+PwmOut com4(dp1);
+
+void seg7(int n, float bright){
+    int n0=0;
+    int n1=0;
+    int n2=0;
+    int n3=0;
+    n3 = n /1000;
+    n2 = (n - n3*1000) /100;
+    n1 = (n - n3*1000 - n2*100) /10;
+    n0 = (n - n3*1000 - n2*100 - n1*10);
+    com1.period(0.0001);
+    com2.period(0.0001);
+    com3.period(0.0001);
+    com4.period(0.0001);
+    com1=0;
+    com2=0;
+    com3=0;
+    com4=0;
+    int x=0;
+    int ag[] = {0xfc,0x60,0xda,0xf2,0x66,0xb6,0xbe,0xe4,0xfe,0xf6,0x01}; // 0,1,2,3,4,5,6,7,8,9,Dot(not used)
+    int mask_a = 0x80;
+    int mask_b = 0x40;
+    int mask_c = 0x20;
+    int mask_d = 0x10;
+    int mask_e = 0x08;
+    int mask_f = 0x04;
+    int mask_g = 0x02;
+ 
+    x = ag[n3];
+    segA = not(x & mask_a);
+    segB = not(x & mask_b);
+    segC = not(x & mask_c);
+    segD = not(x & mask_d);
+    segE = not(x & mask_e);
+    segF = not(x & mask_f);
+    segG = not(x & mask_g);
+    segDot =1;
+    com1=bright;
+    wait(0.001);
+    com1=0.0;
+    
+    x = ag[n2];
+    segA = not(x & mask_a);
+    segB = not(x & mask_b);
+    segC = not(x & mask_c);
+    segD = not(x & mask_d);
+    segE = not(x & mask_e);
+    segF = not(x & mask_f);
+    segG = not(x & mask_g);
+    segDot =0; // Dot ON
+    com2=bright;
+    wait(0.001);
+    com2=0.0;
+    
+    x = ag[n1];
+    segA = not(x & mask_a);
+    segB = not(x & mask_b);
+    segC = not(x & mask_c);
+    segD = not(x & mask_d);
+    segE = not(x & mask_e);
+    segF = not(x & mask_f);
+    segG = not(x & mask_g);
+    segDot =1;
+    com3=bright;
+    wait(0.001);
+    com3=0.0;
+    
+    x = ag[n0];
+    segA = not(x & mask_a);
+    segB = not(x & mask_b);
+    segC = not(x & mask_c);
+    segD = not(x & mask_d);
+    segE = not(x & mask_e);
+    segF = not(x & mask_f);
+    segG = not(x & mask_g);
+    segDot =1;
+    com4=bright;
+    wait(0.001);
+    com4=0.0;
+}
+ 
+int main() {
+    char buf[5];
+    char msg[] = "Slave!";
+ 
+    slave.address(i2c_address);
+    while (1) {
+        int i = slave.receive();
+        switch (i) {
+            case I2CSlave::ReadAddressed:
+                slave.write(msg, strlen(msg) + 1); // Includes null char
+                break;
+            case I2CSlave::WriteGeneral:
+                slave.read(buf, 4);
+                //printf("Read G: %s\r\n", buf);
+                break;
+            case I2CSlave::WriteAddressed:
+                slave.read(buf, 4);
+                //printf("Read A: %s\r\n", buf);
+                n = atoi(buf);
+                break;
+        }
+        seg7(n, 1.0);
+        for(int i = 0; i < 5; i++) buf[i] = 0;    // Clear buffer
+    }
+}
